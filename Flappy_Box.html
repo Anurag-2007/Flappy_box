@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+    body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(to bottom, #02bdde, #34aec4);
+        font-family: "Consolas", monospace;
+        overflow: hidden;
+    }
+
+    canvas {
+        border: 3px solid #333;
+        border-radius: 12px;
+        background-color: aqua;
+        background: url("https://www.transparenttextures.com/patterns/fake-luxury.png");
+        box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    }
+
+    .controls {
+        margin-top: 10px;
+    }
+
+    button {
+        border: none;
+        padding: 12px 24px;
+        margin: 6px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #fff;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        background-color: #f70303;
+    }
+    button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    p { margin: 4px; }
+</style>
+</head>
+<body onload="startGame()">
+<script>
+var myGamePiece, myObstacles = [], myScore, bgX = 0;
+
+function startGame() {
+    myGamePiece = new component(30, 30, "#ffeb3b", 50, 120);
+    myGamePiece.gravity = 0.05;
+    myScore = new component("30px", "Consolas", "#222", 20, 40, "text");
+    myGameArea.start();
+}
+
+var myGameArea = {
+    canvas : document.createElement("canvas"),
+    start : function() {
+        this.canvas.width = 900;
+        this.canvas.height = 500;
+        this.context = this.canvas.getContext("2d");
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+        this.frameNo = 0;
+        this.interval = setInterval(updateGameArea, 20);
+    },
+    clear : function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+}
+
+function component(width, height, color, x, y, type) {
+    this.type = type;
+    this.width = width;
+    this.height = height;
+    this.x = x;
+    this.y = y;
+    this.gravity = 0;
+    this.gravitySpeed = 0;
+    this.update = function() {
+        let ctx = myGameArea.context;
+        if (this.type === "text") {
+            ctx.font = this.width + " " + this.height;
+            ctx.fillStyle = color;
+            ctx.fillText(this.text, this.x, this.y);
+        } else {
+            ctx.fillStyle = color;
+            ctx.shadowColor = "rgba(0,0,0,0.4)";
+            ctx.shadowBlur = 6;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.shadowBlur = 0;
+        }
+    }
+    this.newPos = function() {
+        this.gravitySpeed += this.gravity;
+        this.y += this.gravitySpeed;
+        this.hitBottom();
+    }
+    this.hitBottom = function() {
+        let rockbottom = myGameArea.canvas.height - this.height;
+        if (this.y > rockbottom) {
+            this.y = rockbottom;
+            this.gravitySpeed = 0;
+        }
+    }
+    this.crashWith = function(other) {
+        return !(
+            this.y + this.height < other.y ||
+            this.y > other.y + other.height ||
+            this.x + this.width < other.x ||
+            this.x > other.x + other.width
+        );
+    }
+}
+
+function updateGameArea() {
+    for (let i = 0; i < myObstacles.length; i++) {
+        if (myGamePiece.crashWith(myObstacles[i])) {
+            myScore.text = "GAME OVER - SCORE: " + myGameArea.frameNo;
+            myGameArea.clear();
+            myScore.update();
+            return;
+        }
+    }
+
+    myGameArea.clear();
+
+    // scroll background
+    bgX -= 1;
+    myGameArea.canvas.style.backgroundPosition = bgX + "px 0";
+
+    myGameArea.frameNo++;
+    if (myGameArea.frameNo === 1 || everyinterval(150)) {
+        let x = myGameArea.canvas.width;
+        let height = Math.floor(Math.random() * (220 - 40 + 1) + 40);
+        let gap = Math.floor(Math.random() * (200 - 120 + 1) + 120);
+        myObstacles.push(new component(40, height, "green", x, 0));
+        myObstacles.push(new component(40, myGameArea.canvas.height - height - gap, "green", x, height + gap));
+    }
+
+    for (let i = 0; i < myObstacles.length; i++) {
+        myObstacles[i].x -= 2.5;
+        myObstacles[i].update();
+    }
+
+    myScore.text = "SCORE: " + myGameArea.frameNo;
+    myScore.update();
+    myGamePiece.newPos();
+    myGamePiece.update();
+}
+
+function everyinterval(n) {
+    return myGameArea.frameNo % n === 0;
+}
+
+function accelerate(n) {
+    myGamePiece.gravity = n;
+}
+
+// Spacebar controls
+document.addEventListener("keydown", e => {
+    if (e.code === "Space") accelerate(-0.2);
+});
+document.addEventListener("keyup", e => {
+    if (e.code === "Space") accelerate(0.05);
+});
+</script>
+
+<div class="controls">
+    <button onmousedown="accelerate(-0.2)" onmouseup="accelerate(0.05)"
+            ontouchstart="accelerate(-0.2)" ontouchend="accelerate(0.05)">FLAP</button>
+</div>
+
+<p>Press button / Spacebar to flap. Avoid the pipes!</p>
+</body>
+</html>
